@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Generate AI base review:</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 16px;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background-color: #ffffff;
+        color: #111827;
+        width: 320px;
+      }
+
+      h1 {
+        font-size: 18px;
+        margin: 0 0 12px;
+      }
+
+      .stars {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 12px;
+      }
+
+      .star {
+        font-size: 28px;
+        cursor: pointer;
+        transition: transform 0.15s ease, filter 0.15s ease;
+        color: #d1d5db;
+      }
+
+      .star.shine {
+        color: #fbbf24;
+        text-shadow: 0 0 6px rgba(251, 191, 36, 0.7);
+      }
+
+      .star:hover {
+        transform: scale(1.1) translateY(-1px);
+        filter: drop-shadow(0 0 3px rgba(251, 191, 36, 0.9));
+      }
+
+      textarea {
+        width: 100%;
+        min-height: 80px;
+        resize: vertical;
+        padding: 8px 10px;
+        border-radius: 6px;
+        border: 1px solid #d1d5db;
+        font-family: inherit;
+        font-size: 13px;
+        box-sizing: border-box;
+        outline: none;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      }
+
+      textarea:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.35);
+      }
+
+      .buttons {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .btn {
+        min-width: 80px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        border: none;
+        font-size: 13px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: background-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+      }
+
+      .btn-primary {
+        background-color: #2563eb;
+        color: white;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+      }
+
+      .btn-primary:hover {
+        background-color: #1d4ed8;
+        transform: translateY(-0.5px);
+        box-shadow: 0 2px 6px rgba(37, 99, 235, 0.4);
+      }
+
+      .btn-secondary {
+        background-color: #e5f0ff;
+        color: #1d4ed8;
+      }
+
+      .btn-secondary:hover {
+        background-color: #d0e2ff;
+      }
+
+      #form-view { }
+      #result-view { display: none; }
+      #result-view.visible { display: block; }
+      #form-view.hidden { display: none; }
+
+      .result-text {
+        font-size: 13px;
+        line-height: 1.5;
+        margin: 12px 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .loading { color: #6b7280; }
+      .error { color: #dc2626; }
+      .result-actions { margin-top: 12px; display: flex; gap: 8px; justify-content: flex-end; }
+    </style>
+  </head>
+  <body>
+    <div id="form-view">
+      <h1>Create a review:</h1>
+      <div id="stars-root" class="stars"></div>
+      <textarea id="review-text" placeholder="Generate a review ..."></textarea>
+      <div class="buttons">
+        <button id="cancel-btn" class="btn btn-secondary" type="button">Cancel</button>
+        <button id="finish-btn" class="btn btn-primary" type="button">Finish</button>
+      </div>
+    </div>
+
+    <div id="result-view">
+      <h1>Your review</h1>
+      <div id="result-content" class="result-text"></div>
+      <div class="result-actions">
+        <button id="open-options-btn" class="btn btn-secondary" type="button" style="display: none;">Open options</button>
+        <button id="copy-btn" class="btn btn-secondary" type="button">Copy</button>
+        <button id="close-result-btn" class="btn btn-primary" type="button">Close</button>
+      </div>
+    </div>
+
+    <script type="module" src="dist/popup.js"></script>
+  </body>
+</html>
+

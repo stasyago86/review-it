@@ -1,0 +1,12 @@
+{
+  "name": "review-it-extension",
+  "version": "1.0.0",
+  "description": "Chrome extension to create a review with star rating and free text.",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.268",
+    "typescript": "^5.6.0"
+  }
+}

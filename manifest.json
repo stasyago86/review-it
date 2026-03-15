@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Review It",
+  "version": "1.0.0",
+  "description": "Generate AI based review with star rating and optional input text.",
+  "permissions": ["tabs", "activeTab", "scripting", "storage"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Generate a review"
+  },
+  "options_ui": {
+    "page": "options.html"
+  }
+}
