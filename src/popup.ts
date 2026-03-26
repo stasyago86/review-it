@@ -74,8 +74,9 @@ async function getPageInfo(): Promise<{
   pageTitle: string;
   pageUrl: string;
   item: string | null;
+  siteLanguage: string | null;
 }> {
-  const fallback = { pageTitle: "", pageUrl: "", item: null as string | null };
+  const fallback = { pageTitle: "", pageUrl: "", item: null as string | null, siteLanguage: null as string | null };
 
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -87,94 +88,57 @@ async function getPageInfo(): Promise<{
     const pageUrl = tab.url ?? "";
 
     let item: string | null = null;
+    let siteLanguage: string | null = null;
     try {
       const results = await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: () => {
           const h1 = document.querySelector("h1");
           const ogTitle = document.querySelector('meta[property="og:title"]');
-          return (h1?.textContent?.trim() ?? ogTitle?.getAttribute("content") ?? null) || null;
+          const langAttr = document.documentElement?.getAttribute("lang")?.trim() || "";
+          const metaLang =
+            document.querySelector('meta[http-equiv="content-language"]')?.getAttribute("content")?.trim() ||
+            document.querySelector('meta[name="language"]')?.getAttribute("content")?.trim() ||
+            "";
+
+          const siteLanguage = (langAttr || metaLang || "").trim() || null;
+          const item = (h1?.textContent?.trim() ?? ogTitle?.getAttribute("content") ?? null) || null;
+          return { item, siteLanguage };
         }
       });
-      item = results?.[0]?.result ?? null;
+      const r = results?.[0]?.result as { item?: string | null; siteLanguage?: string | null } | undefined;
+      item = r?.item ?? null;
+      siteLanguage = r?.siteLanguage ?? null;
     } catch {
       // Page may not allow scripting (e.g. chrome://); ignore
     }
 
-    return { pageTitle, pageUrl, item };
+    return { pageTitle, pageUrl, item, siteLanguage };
   } catch {
     return fallback;
   }
 }
 
-const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
-const STORAGE_KEY = "openaiApiKey";
 
-function getApiKey(): Promise<string | null> {
-  return new Promise((resolve) => {
-    chrome.storage.local.get([STORAGE_KEY], (result) => {
-      const key = result[STORAGE_KEY];
-      resolve(typeof key === "string" && key.length > 0 ? key : null);
-    });
-  });
-}
-
-function buildReviewPrompt(payload: {
+async function fetchReview(payload: {
   rating: number;
   text: string;
   pageTitle: string;
   pageUrl: string;
   item: string | null;
-}): string {
-  const parts: string[] = [
-    "You are a helpful assistant that writes short, natural product or service reviews.",
-    "Based ONLY on the following information, write a single review between 100 and 200 words.",
-    "Infer the type of subject from the URL and context (e.g. hotel, restaurant, car, service, product, or other).",
-    "Match the tone and strength of the review to the star rating (1 = very negative, 5 = very positive).",
-    "Do not invent details; base the review on the rating, page context, and any user comment below.",
-    "",
-    "Star rating (1–5): " + payload.rating,
-    "Page title: " + (payload.pageTitle || "(none)"),
-    "Page URL: " + (payload.pageUrl || "(none)"),
-    payload.item ? "Item/name: " + payload.item : ""
-  ];
-  if (payload.text) {
-    parts.push("", "User comment (include in the review): " + payload.text);
-  }
-  parts.push("", "Write only the review text, no headings or labels.");
-  return parts.filter(Boolean).join("\n");
-}
-
-async function callOpenAI(apiKey: string, prompt: string): Promise<string> {
-  const res = await fetch(OPENAI_API_URL, {
+  siteLanguage: string | null;
+}): Promise<string> {
+  const response = await fetch("https://review-it-backend-587398533610.europe-west4.run.app/api/review", {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + apiKey
+      "Content-Type": "application/json"
     },
-    body: JSON.stringify({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
-      max_tokens: 400
-    })
+    body: JSON.stringify(payload)
   });
-
-  if (!res.ok) {
-    const errBody = await res.text();
-    let msg = "OpenAI request failed: " + res.status;
-    try {
-      const j = JSON.parse(errBody);
-      if (j.error?.message) msg = j.error.message;
-    } catch {
-      if (errBody) msg += " " + errBody.slice(0, 200);
-    }
-    throw new Error(msg);
+  if (!response.ok) {
+    throw new Error(`Backend error: ${response.status}`);
   }
-
-  const data = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
-  const content = data.choices?.[0]?.message?.content?.trim();
-  if (!content) throw new Error("No review text in response");
-  return content;
+  return await response.text()
 }
 
 function showResultView(content: string, isError: boolean, showOptionsButton = false): void {
@@ -214,33 +178,16 @@ async function handleFinish(starsRoot: HTMLElement) {
     text,
     pageTitle: pageInfo.pageTitle,
     pageUrl: pageInfo.pageUrl,
-    item: pageInfo.item
+    item: pageInfo.item,
+    siteLanguage: pageInfo.siteLanguage
   };
-
-  const apiKey = await getApiKey();
-  if (!apiKey) {
-    showResultView(
-      "Please set your OpenAI API key in the extension options (right-click the extension icon → Options).",
-      true,
-      true
-    );
-    document.getElementById("open-options-btn")?.addEventListener("click", () => {
-      chrome.runtime.openOptionsPage();
-    });
-    document.getElementById("close-result-btn")?.addEventListener("click", () => {
-      showFormView();
-      closePopup();
-    });
-    return;
-  }
 
   showResultView("Generating review…", false);
   const resultContent = document.getElementById("result-content");
   if (resultContent) resultContent.classList.add("loading");
 
   try {
-    const prompt = buildReviewPrompt(payload);
-    const review = await callOpenAI(apiKey, prompt);
+    const review = await fetchReview(payload);
     if (resultContent) resultContent.classList.remove("loading");
     showResultView(review, false);
   } catch (e) {
