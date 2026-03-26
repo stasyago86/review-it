@@ -58,8 +58,8 @@ function closePopup() {
 }
 /** Extract page title, URL, and optional "item" (h1 or og:title) from the active tab. */
 async function getPageInfo() {
-    var _a, _b, _c, _d, _e, _f, _g, _h;
-    const fallback = { pageTitle: "", pageUrl: "", item: null };
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+    const fallback = { pageTitle: "", pageUrl: "", item: null, siteLanguage: null };
     try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (!(tab === null || tab === void 0 ? void 0 : tab.id) || ((_a = tab.url) === null || _a === void 0 ? void 0 : _a.startsWith("chrome://")) || ((_b = tab.url) === null || _b === void 0 ? void 0 : _b.startsWith("edge://"))) {
@@ -68,89 +68,48 @@ async function getPageInfo() {
         const pageTitle = (_e = tab.title) !== null && _e !== void 0 ? _e : "";
         const pageUrl = (_f = tab.url) !== null && _f !== void 0 ? _f : "";
         let item = null;
+        let siteLanguage = null;
         try {
             const results = await chrome.scripting.executeScript({
                 target: { tabId: tab.id },
                 func: () => {
-                    var _a, _b, _c;
+                    var _a, _b, _c, _d, _e, _f, _g, _h, _j;
                     const h1 = document.querySelector("h1");
                     const ogTitle = document.querySelector('meta[property="og:title"]');
-                    return ((_c = (_b = (_a = h1 === null || h1 === void 0 ? void 0 : h1.textContent) === null || _a === void 0 ? void 0 : _a.trim()) !== null && _b !== void 0 ? _b : ogTitle === null || ogTitle === void 0 ? void 0 : ogTitle.getAttribute("content")) !== null && _c !== void 0 ? _c : null) || null;
+                    const langAttr = ((_b = (_a = document.documentElement) === null || _a === void 0 ? void 0 : _a.getAttribute("lang")) === null || _b === void 0 ? void 0 : _b.trim()) || "";
+                    const metaLang = ((_d = (_c = document.querySelector('meta[http-equiv="content-language"]')) === null || _c === void 0 ? void 0 : _c.getAttribute("content")) === null || _d === void 0 ? void 0 : _d.trim()) ||
+                        ((_f = (_e = document.querySelector('meta[name="language"]')) === null || _e === void 0 ? void 0 : _e.getAttribute("content")) === null || _f === void 0 ? void 0 : _f.trim()) ||
+                        "";
+                    const siteLanguage = (langAttr || metaLang || "").trim() || null;
+                    const item = ((_j = (_h = (_g = h1 === null || h1 === void 0 ? void 0 : h1.textContent) === null || _g === void 0 ? void 0 : _g.trim()) !== null && _h !== void 0 ? _h : ogTitle === null || ogTitle === void 0 ? void 0 : ogTitle.getAttribute("content")) !== null && _j !== void 0 ? _j : null) || null;
+                    return { item, siteLanguage };
                 }
             });
-            item = (_h = (_g = results === null || results === void 0 ? void 0 : results[0]) === null || _g === void 0 ? void 0 : _g.result) !== null && _h !== void 0 ? _h : null;
+            const r = (_g = results === null || results === void 0 ? void 0 : results[0]) === null || _g === void 0 ? void 0 : _g.result;
+            item = (_h = r === null || r === void 0 ? void 0 : r.item) !== null && _h !== void 0 ? _h : null;
+            siteLanguage = (_j = r === null || r === void 0 ? void 0 : r.siteLanguage) !== null && _j !== void 0 ? _j : null;
         }
-        catch (_j) {
+        catch (_k) {
             // Page may not allow scripting (e.g. chrome://); ignore
         }
-        return { pageTitle, pageUrl, item };
+        return { pageTitle, pageUrl, item, siteLanguage };
     }
-    catch (_k) {
+    catch (_l) {
         return fallback;
     }
 }
-const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
-const STORAGE_KEY = "openaiApiKey";
-function getApiKey() {
-    return new Promise((resolve) => {
-        chrome.storage.local.get([STORAGE_KEY], (result) => {
-            const key = result[STORAGE_KEY];
-            resolve(typeof key === "string" && key.length > 0 ? key : null);
-        });
-    });
-}
-function buildReviewPrompt(payload) {
-    const parts = [
-        "You are a helpful assistant that writes short, natural product or service reviews.",
-        "Based ONLY on the following information, write a single review between 100 and 200 words.",
-        "Infer the type of subject from the URL and context (e.g. hotel, restaurant, car, service, product, or other).",
-        "Match the tone and strength of the review to the star rating (1 = very negative, 5 = very positive).",
-        "Do not invent details; base the review on the rating, page context, and any user comment below.",
-        "",
-        "Star rating (1–5): " + payload.rating,
-        "Page title: " + (payload.pageTitle || "(none)"),
-        "Page URL: " + (payload.pageUrl || "(none)"),
-        payload.item ? "Item/name: " + payload.item : ""
-    ];
-    if (payload.text) {
-        parts.push("", "User comment (include in the review): " + payload.text);
-    }
-    parts.push("", "Write only the review text, no headings or labels.");
-    return parts.filter(Boolean).join("\n");
-}
-async function callOpenAI(apiKey, prompt) {
-    var _a, _b, _c, _d, _e;
-    const res = await fetch(OPENAI_API_URL, {
+async function fetchReview(payload) {
+    const response = await fetch("https://review-it-backend-587398533610.europe-west4.run.app/api/review", {
         method: "POST",
         headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer " + apiKey
+            "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-            model: "gpt-4o-mini",
-            messages: [{ role: "user", content: prompt }],
-            max_tokens: 400
-        })
+        body: JSON.stringify(payload)
     });
-    if (!res.ok) {
-        const errBody = await res.text();
-        let msg = "OpenAI request failed: " + res.status;
-        try {
-            const j = JSON.parse(errBody);
-            if ((_a = j.error) === null || _a === void 0 ? void 0 : _a.message)
-                msg = j.error.message;
-        }
-        catch (_f) {
-            if (errBody)
-                msg += " " + errBody.slice(0, 200);
-        }
-        throw new Error(msg);
+    if (!response.ok) {
+        throw new Error(`Backend error: ${response.status}`);
     }
-    const data = await res.json();
-    const content = (_e = (_d = (_c = (_b = data.choices) === null || _b === void 0 ? void 0 : _b[0]) === null || _c === void 0 ? void 0 : _c.message) === null || _d === void 0 ? void 0 : _d.content) === null || _e === void 0 ? void 0 : _e.trim();
-    if (!content)
-        throw new Error("No review text in response");
-    return content;
+    return await response.text();
 }
 function showResultView(content, isError, showOptionsButton = false) {
     const formView = document.getElementById("form-view");
@@ -183,7 +142,7 @@ function showFormView() {
         resultContent.classList.remove("error", "loading");
 }
 async function handleFinish(starsRoot) {
-    var _a, _b, _c, _d, _e;
+    var _a, _b, _c;
     const textarea = document.getElementById("review-text");
     const text = (_a = textarea === null || textarea === void 0 ? void 0 : textarea.value.trim()) !== null && _a !== void 0 ? _a : "";
     const rating = getSelectedRating(starsRoot);
@@ -193,27 +152,15 @@ async function handleFinish(starsRoot) {
         text,
         pageTitle: pageInfo.pageTitle,
         pageUrl: pageInfo.pageUrl,
-        item: pageInfo.item
+        item: pageInfo.item,
+        siteLanguage: pageInfo.siteLanguage
     };
-    const apiKey = await getApiKey();
-    if (!apiKey) {
-        showResultView("Please set your OpenAI API key in the extension options (right-click the extension icon → Options).", true, true);
-        (_b = document.getElementById("open-options-btn")) === null || _b === void 0 ? void 0 : _b.addEventListener("click", () => {
-            chrome.runtime.openOptionsPage();
-        });
-        (_c = document.getElementById("close-result-btn")) === null || _c === void 0 ? void 0 : _c.addEventListener("click", () => {
-            showFormView();
-            closePopup();
-        });
-        return;
-    }
     showResultView("Generating review…", false);
     const resultContent = document.getElementById("result-content");
     if (resultContent)
         resultContent.classList.add("loading");
     try {
-        const prompt = buildReviewPrompt(payload);
-        const review = await callOpenAI(apiKey, prompt);
+        const review = await fetchReview(payload);
         if (resultContent)
             resultContent.classList.remove("loading");
         showResultView(review, false);
@@ -224,7 +171,7 @@ async function handleFinish(starsRoot) {
             resultContent.classList.remove("loading");
         showResultView("Error: " + message, true);
     }
-    (_d = document.getElementById("copy-btn")) === null || _d === void 0 ? void 0 : _d.addEventListener("click", () => {
+    (_b = document.getElementById("copy-btn")) === null || _b === void 0 ? void 0 : _b.addEventListener("click", () => {
         var _a;
         const el = document.getElementById("result-content");
         const text = (_a = el === null || el === void 0 ? void 0 : el.textContent) !== null && _a !== void 0 ? _a : "";
@@ -232,7 +179,7 @@ async function handleFinish(starsRoot) {
             navigator.clipboard.writeText(text).catch(() => { });
         }
     });
-    (_e = document.getElementById("close-result-btn")) === null || _e === void 0 ? void 0 : _e.addEventListener("click", () => {
+    (_c = document.getElementById("close-result-btn")) === null || _c === void 0 ? void 0 : _c.addEventListener("click", () => {
         showFormView();
         closePopup();
     });
