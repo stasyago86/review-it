@@ -114,26 +114,68 @@
       .loading { color: #6b7280; }
       .error { color: #dc2626; }
       .result-actions { margin-top: 12px; display: flex; gap: 8px; justify-content: flex-end; }
+
+      .loading-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        padding: 28px 8px;
+        min-height: 140px;
+      }
+      .loading-state.hidden {
+        display: none;
+      }
+      #result-body.hidden {
+        display: none;
+      }
+      .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid #e5e7eb;
+        border-top-color: #2563eb;
+        border-radius: 50%;
+        animation: spin 0.75s linear infinite;
+        flex-shrink: 0;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .loading-label {
+        margin: 0;
+        font-size: 13px;
+        color: #6b7280;
+        text-align: center;
+      }
     </style>
   </head>
   <body>
     <div id="form-view">
-      <h1>Create a review:</h1>
+      <h1>Rank your experience:</h1>
       <div id="stars-root" class="stars"></div>
-      <textarea id="review-text" placeholder="Generate a review ..."></textarea>
+      <textarea id="review-text" placeholder="Add free text ..."></textarea>
       <div class="buttons">
         <button id="cancel-btn" class="btn btn-secondary" type="button">Cancel</button>
-        <button id="finish-btn" class="btn btn-primary" type="button">Finish</button>
+        <button id="finish-btn" class="btn btn-primary" type="button">Generate</button>
       </div>
     </div>
 
     <div id="result-view">
-      <h1>Your review</h1>
-      <div id="result-content" class="result-text"></div>
-      <div class="result-actions">
-        <button id="open-options-btn" class="btn btn-secondary" type="button" style="display: none;">Open options</button>
-        <button id="copy-btn" class="btn btn-secondary" type="button">Copy</button>
-        <button id="close-result-btn" class="btn btn-primary" type="button">Close</button>
+      <h1>Your review:</h1>
+      <div id="loading-state" class="loading-state hidden" aria-busy="true" aria-live="polite">
+        <div class="spinner" aria-hidden="true"></div>
+        <p class="loading-label">Generating review…</p>
+      </div>
+      <div id="result-body">
+        <div id="result-content" class="result-text"></div>
+        <div class="result-actions">
+          <button id="open-options-btn" class="btn btn-secondary" type="button" style="display: none;">Open options</button>
+          <button id="copy-btn" class="btn btn-secondary" type="button">Copy</button>
+          <button id="close-result-btn" class="btn btn-primary" type="button">Close</button>
+        </div>
       </div>
     </div>
 
