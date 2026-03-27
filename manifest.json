@@ -3,10 +3,16 @@
   "name": "Review It",
   "version": "1.0.0",
   "description": "Generate AI based review with star rating and optional input text.",
-  "permissions": ["tabs", "activeTab", "scripting", "storage"],
+  "permissions": ["activeTab", "scripting", "storage"],
+  "icons": {
+    "128": "icons/icon128.png"
+  },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Generate a review"
+    "default_title": "Generate a review",
+    "default_icon": {
+      "128": "icons/icon128.png"
+    }
   },
   "options_ui": {
     "page": "options.html"

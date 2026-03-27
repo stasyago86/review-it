@@ -120,6 +120,8 @@ async function getPageInfo(): Promise<{
 }
 
 
+const FETCH_REVIEW_TIMEOUT_MS = 15_000;
+
 async function fetchReview(payload: {
   rating: number;
   text: string;
@@ -128,17 +130,50 @@ async function fetchReview(payload: {
   item: string | null;
   siteLanguage: string | null;
 }): Promise<string> {
-  const response = await fetch("https://review-it-backend-587398533610.europe-west4.run.app/api/review", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(payload)
-  });
-  if (!response.ok) {
-    throw new Error(`Backend error: ${response.status}`);
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), FETCH_REVIEW_TIMEOUT_MS);
+
+  try {
+    const response = await fetch("https://review-it-backend-587398533610.europe-west4.run.app/api/review", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+    if (!response.ok) {
+      throw new Error(`Backend error: ${response.status}`);
+    }
+    return await response.text();
+  } catch (e) {
+    const aborted =
+      (e instanceof DOMException && e.name === "AbortError") ||
+      (e instanceof Error && e.name === "AbortError");
+    if (aborted) {
+      throw new Error(
+        "Request timed out after 15 seconds. Check your connection and try again."
+      );
+    }
+    throw e;
+  } finally {
+    window.clearTimeout(timeoutId);
   }
-  return await response.text()
+}
+
+function setResultLoading(loading: boolean): void {
+  const loadingState = document.getElementById("loading-state");
+  const resultBody = document.getElementById("result-body");
+  if (loadingState) loadingState.classList.toggle("hidden", !loading);
+  if (resultBody) resultBody.classList.toggle("hidden", loading);
+}
+
+function showResultViewLoading(): void {
+  const formView = document.getElementById("form-view");
+  const resultView = document.getElementById("result-view");
+  if (formView) formView.classList.add("hidden");
+  if (resultView) resultView.classList.add("visible");
+  setResultLoading(true);
 }
 
 function showResultView(content: string, isError: boolean, showOptionsButton = false): void {
@@ -150,6 +185,7 @@ function showResultView(content: string, isError: boolean, showOptionsButton = f
 
   if (formView) formView.classList.add("hidden");
   if (resultView) resultView.classList.add("visible");
+  setResultLoading(false);
   if (resultContent) {
     resultContent.textContent = content;
     resultContent.className = "result-text " + (isError ? "error" : "");
@@ -161,9 +197,12 @@ function showResultView(content: string, isError: boolean, showOptionsButton = f
 function showFormView(): void {
   const formView = document.getElementById("form-view");
   const resultView = document.getElementById("result-view");
+  const resultBody = document.getElementById("result-body");
   const resultContent = document.getElementById("result-content");
   if (formView) formView.classList.remove("hidden");
   if (resultView) resultView.classList.remove("visible");
+  setResultLoading(false);
+  if (resultBody) resultBody.classList.remove("hidden");
   if (resultContent) resultContent.classList.remove("error", "loading");
 }
 
@@ -182,17 +221,13 @@ async function handleFinish(starsRoot: HTMLElement) {
     siteLanguage: pageInfo.siteLanguage
   };
 
-  showResultView("Generating review…", false);
-  const resultContent = document.getElementById("result-content");
-  if (resultContent) resultContent.classList.add("loading");
+  showResultViewLoading();
 
   try {
     const review = await fetchReview(payload);
-    if (resultContent) resultContent.classList.remove("loading");
     showResultView(review, false);
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    if (resultContent) resultContent.classList.remove("loading");
     showResultView("Error: " + message, true);
   }
 

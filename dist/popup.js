@@ -98,18 +98,52 @@ async function getPageInfo() {
         return fallback;
     }
 }
+const FETCH_REVIEW_TIMEOUT_MS = 15000;
 async function fetchReview(payload) {
-    const response = await fetch("https://review-it-backend-587398533610.europe-west4.run.app/api/review", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload)
-    });
-    if (!response.ok) {
-        throw new Error(`Backend error: ${response.status}`);
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), FETCH_REVIEW_TIMEOUT_MS);
+    try {
+        const response = await fetch("https://review-it-backend-587398533610.europe-west4.run.app/api/review", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload),
+            signal: controller.signal
+        });
+        if (!response.ok) {
+            throw new Error(`Backend error: ${response.status}`);
+        }
+        return await response.text();
     }
-    return await response.text();
+    catch (e) {
+        const aborted = (e instanceof DOMException && e.name === "AbortError") ||
+            (e instanceof Error && e.name === "AbortError");
+        if (aborted) {
+            throw new Error("Request timed out after 15 seconds. Check your connection and try again.");
+        }
+        throw e;
+    }
+    finally {
+        window.clearTimeout(timeoutId);
+    }
+}
+function setResultLoading(loading) {
+    const loadingState = document.getElementById("loading-state");
+    const resultBody = document.getElementById("result-body");
+    if (loadingState)
+        loadingState.classList.toggle("hidden", !loading);
+    if (resultBody)
+        resultBody.classList.toggle("hidden", loading);
+}
+function showResultViewLoading() {
+    const formView = document.getElementById("form-view");
+    const resultView = document.getElementById("result-view");
+    if (formView)
+        formView.classList.add("hidden");
+    if (resultView)
+        resultView.classList.add("visible");
+    setResultLoading(true);
 }
 function showResultView(content, isError, showOptionsButton = false) {
     const formView = document.getElementById("form-view");
@@ -121,6 +155,7 @@ function showResultView(content, isError, showOptionsButton = false) {
         formView.classList.add("hidden");
     if (resultView)
         resultView.classList.add("visible");
+    setResultLoading(false);
     if (resultContent) {
         resultContent.textContent = content;
         resultContent.className = "result-text " + (isError ? "error" : "");
@@ -133,11 +168,15 @@ function showResultView(content, isError, showOptionsButton = false) {
 function showFormView() {
     const formView = document.getElementById("form-view");
     const resultView = document.getElementById("result-view");
+    const resultBody = document.getElementById("result-body");
     const resultContent = document.getElementById("result-content");
     if (formView)
         formView.classList.remove("hidden");
     if (resultView)
         resultView.classList.remove("visible");
+    setResultLoading(false);
+    if (resultBody)
+        resultBody.classList.remove("hidden");
     if (resultContent)
         resultContent.classList.remove("error", "loading");
 }
@@ -155,20 +194,13 @@ async function handleFinish(starsRoot) {
         item: pageInfo.item,
         siteLanguage: pageInfo.siteLanguage
     };
-    showResultView("Generating review…", false);
-    const resultContent = document.getElementById("result-content");
-    if (resultContent)
-        resultContent.classList.add("loading");
+    showResultViewLoading();
     try {
         const review = await fetchReview(payload);
-        if (resultContent)
-            resultContent.classList.remove("loading");
         showResultView(review, false);
     }
     catch (e) {
         const message = e instanceof Error ? e.message : String(e);
-        if (resultContent)
-            resultContent.classList.remove("loading");
         showResultView("Error: " + message, true);
     }
     (_b = document.getElementById("copy-btn")) === null || _b === void 0 ? void 0 : _b.addEventListener("click", () => {
