@@ -2,6 +2,7 @@
 
 const MAX_STARS = 5;
 const RATING_ATTR = "data-selected-rating";
+const SERVER_URL = "https://review-it-backend-587398533610.europe-west4.run.app/api/review";
 
 let hoverRating = 0;
 
@@ -134,7 +135,7 @@ async function fetchReview(payload: {
   const timeoutId = window.setTimeout(() => controller.abort(), FETCH_REVIEW_TIMEOUT_MS);
 
   try {
-    const response = await fetch("https://review-it-backend-587398533610.europe-west4.run.app/api/review", {
+    const response = await fetch(SERVER_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -176,12 +177,11 @@ function showResultViewLoading(): void {
   setResultLoading(true);
 }
 
-function showResultView(content: string, isError: boolean, showOptionsButton = false): void {
+function showResultView(content: string, isError: boolean): void {
   const formView = document.getElementById("form-view");
   const resultView = document.getElementById("result-view");
   const resultContent = document.getElementById("result-content");
   const copyBtn = document.getElementById("copy-btn");
-  const openOptionsBtn = document.getElementById("open-options-btn");
 
   if (formView) formView.classList.add("hidden");
   if (resultView) resultView.classList.add("visible");
@@ -190,8 +190,11 @@ function showResultView(content: string, isError: boolean, showOptionsButton = f
     resultContent.textContent = content;
     resultContent.className = "result-text " + (isError ? "error" : "");
   }
-  if (copyBtn) (copyBtn as HTMLButtonElement).disabled = isError;
-  if (openOptionsBtn) (openOptionsBtn as HTMLButtonElement).style.display = showOptionsButton ? "inline-block" : "none";
+  if (copyBtn) {
+    const btn = copyBtn as HTMLButtonElement;
+    btn.disabled = isError;
+    btn.style.display = isError ? "none" : "";
+  }
 }
 
 function showFormView(): void {
@@ -204,6 +207,11 @@ function showFormView(): void {
   setResultLoading(false);
   if (resultBody) resultBody.classList.remove("hidden");
   if (resultContent) resultContent.classList.remove("error", "loading");
+  const copyBtn = document.getElementById("copy-btn") as HTMLButtonElement | null;
+  if (copyBtn) {
+    copyBtn.style.display = "";
+    copyBtn.disabled = false;
+  }
 }
 
 async function handleFinish(starsRoot: HTMLElement) {

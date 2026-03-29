@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Privacy Policy — Review It</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --fg: #111827;
+        --muted: #4b5563;
+        --bg: #ffffff;
+        --border: #e5e7eb;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --fg: #f9fafb;
+          --muted: #9ca3af;
+          --bg: #111827;
+          --border: #374151;
+        }
+      }
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        line-height: 1.6;
+        max-width: 42rem;
+        margin: 0 auto;
+        padding: 1.5rem 1.25rem 3rem;
+        color: var(--fg);
+        background: var(--bg);
+      }
+      h1 {
+        font-size: 1.75rem;
+        margin-top: 0;
+        line-height: 1.25;
+      }
+      h2 {
+        font-size: 1.15rem;
+        margin-top: 2rem;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 0.35rem;
+      }
+      p,
+      li {
+        color: var(--muted);
+      }
+      ul {
+        padding-left: 1.25rem;
+      }
+      .meta {
+        font-size: 0.9rem;
+        color: var(--muted);
+        margin-bottom: 2rem;
+      }
+      a {
+        color: #2563eb;
+      }
+      @media (prefers-color-scheme: dark) {
+        a {
+          color: #93c5fd;
+        }
+      }
+      code {
+        font-size: 0.9em;
+        padding: 0.1em 0.35em;
+        border-radius: 4px;
+        background: var(--border);
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Privacy Policy</h1>
+    <p class="meta">
+      <strong>Review It</strong> — Chrome extension<br />
+      <em>Last updated:</em> March 2026
+    </p>
+
+    <p>
+      This policy describes how the Review It browser extension (“the Extension”) handles information when you use
+      it. The Extension helps you generate a short review based on your star rating, optional notes, and context from
+      the webpage you are viewing.
+    </p>
+
+
+    <h2>What information is collected</h2>
+    <p>The Extension does not sell your data. When you click the action to generate a review, the Extension may send the following to our backend service over HTTPS:</p>
+    <ul>
+      <li><strong>Star rating</strong> you selected (1–5).</li>
+      <li><strong>Optional free text</strong> you typed in the Extension popup.</li>
+      <li><strong>Page URL</strong> and <strong>page title</strong> of the active browser tab (the tab you had open when you used the Extension).</li>
+      <li>
+        <strong>Limited page metadata</strong> read only from that same tab, when permitted by the browser: the main
+        heading (<code>h1</code>) or Open Graph title (<code>og:title</code>), and declared page language (for example
+        <code>&lt;html lang&gt;</code> or language meta tags), to tailor the generated review.
+      </li>
+    </ul>
+    <p>
+      The Extension uses Chrome’s <code>activeTab</code> and <code>scripting</code> permissions so this happens only
+      when you invoke the Extension (for example by opening its popup)—not continuously in the background on sites you
+      do not interact with through the Extension.
+    </p>
+
+    <h2>Where data is processed</h2>
+    <p>
+      The payload is sent to our API endpoint:
+      <code>https://review-it-backend-587398533610.europe-west4.run.app/api/review</code>
+      (hosted on Google Cloud). Our servers may call an AI provider to produce the review text.
+    </p>
+
+    <h2>What we do not do</h2>
+    <ul>
+      <li>We do not read passwords, payment data, or cookies from websites.</li>
+      <li>We do not scan all tabs or your full browsing history.</li>
+      <li>We do not run injected scripts on pages until you use the Extension on that tab as allowed by the browser.</li>
+    </ul>
+
+    <h2>Retention</h2>
+    <p>
+      The app will store request logs to improve maintenance and performance,
+      the logs are anonymizes, so no user data is logged, only the rank and the hotel/restaurant/place.
+    </p>
+
+    <h2>User rights</h2>
+    <p>
+      You can stop sending data by not clicking generate, or by uninstalling the Extension. You may have rights under
+      GDPR or other laws to access, correct, or delete personal data—contact us using the details above.
+    </p>
+
+    <h2>Contact</h2>
+    <p>
+      The Extension is provided by the developer listed on the Chrome Web Store listing. For questions about this
+      policy, use the contact details on the store listing.
+    </p>
+
+  </body>
+</html>

@@ -2,6 +2,7 @@
 /// <reference types="chrome" />
 const MAX_STARS = 5;
 const RATING_ATTR = "data-selected-rating";
+const SERVER_URL = "https://review-it-backend-587398533610.europe-west4.run.app/api/review";
 let hoverRating = 0;
 function getSelectedRating(container) {
     const val = container.getAttribute(RATING_ATTR);
@@ -103,7 +104,7 @@ async function fetchReview(payload) {
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => controller.abort(), FETCH_REVIEW_TIMEOUT_MS);
     try {
-        const response = await fetch("https://review-it-backend-587398533610.europe-west4.run.app/api/review", {
+        const response = await fetch(SERVER_URL, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
@@ -145,12 +146,11 @@ function showResultViewLoading() {
         resultView.classList.add("visible");
     setResultLoading(true);
 }
-function showResultView(content, isError, showOptionsButton = false) {
+function showResultView(content, isError) {
     const formView = document.getElementById("form-view");
     const resultView = document.getElementById("result-view");
     const resultContent = document.getElementById("result-content");
     const copyBtn = document.getElementById("copy-btn");
-    const openOptionsBtn = document.getElementById("open-options-btn");
     if (formView)
         formView.classList.add("hidden");
     if (resultView)
@@ -160,10 +160,11 @@ function showResultView(content, isError, showOptionsButton = false) {
         resultContent.textContent = content;
         resultContent.className = "result-text " + (isError ? "error" : "");
     }
-    if (copyBtn)
-        copyBtn.disabled = isError;
-    if (openOptionsBtn)
-        openOptionsBtn.style.display = showOptionsButton ? "inline-block" : "none";
+    if (copyBtn) {
+        const btn = copyBtn;
+        btn.disabled = isError;
+        btn.style.display = isError ? "none" : "";
+    }
 }
 function showFormView() {
     const formView = document.getElementById("form-view");
@@ -179,6 +180,11 @@ function showFormView() {
         resultBody.classList.remove("hidden");
     if (resultContent)
         resultContent.classList.remove("error", "loading");
+    const copyBtn = document.getElementById("copy-btn");
+    if (copyBtn) {
+        copyBtn.style.display = "";
+        copyBtn.disabled = false;
+    }
 }
 async function handleFinish(starsRoot) {
     var _a, _b, _c;
