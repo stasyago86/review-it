@@ -3,7 +3,24 @@
 const MAX_STARS = 5;
 const RATING_ATTR = "data-selected-rating";
 const SERVER_URL = "https://review-it-backend-587398533610.europe-west4.run.app/api/review";
+const DRAFT_REVIEW_TEXT_KEY = "draftReviewText";
 let hoverRating = 0;
+function saveDraftText(value) {
+    chrome.storage.local.set({ [DRAFT_REVIEW_TEXT_KEY]: value });
+}
+function loadDraftText() {
+    return new Promise((resolve) => {
+        chrome.storage.local.get([DRAFT_REVIEW_TEXT_KEY], (result) => {
+            const v = result[DRAFT_REVIEW_TEXT_KEY];
+            resolve(typeof v === "string" ? v : "");
+        });
+    });
+}
+function clearDraftText() {
+    return new Promise((resolve) => {
+        chrome.storage.local.remove([DRAFT_REVIEW_TEXT_KEY], () => resolve());
+    });
+}
 function getSelectedRating(container) {
     const val = container.getAttribute(RATING_ATTR);
     return val ? parseInt(val, 10) : 0;
@@ -99,7 +116,7 @@ async function getPageInfo() {
         return fallback;
     }
 }
-const FETCH_REVIEW_TIMEOUT_MS = 15000;
+const FETCH_REVIEW_TIMEOUT_MS = 30000;
 async function fetchReview(payload) {
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => controller.abort(), FETCH_REVIEW_TIMEOUT_MS);
@@ -121,7 +138,7 @@ async function fetchReview(payload) {
         const aborted = (e instanceof DOMException && e.name === "AbortError") ||
             (e instanceof Error && e.name === "AbortError");
         if (aborted) {
-            throw new Error("Request timed out after 15 seconds. Check your connection and try again.");
+            throw new Error("Request timed out. Check your connection and try again.");
         }
         throw e;
     }
@@ -203,6 +220,9 @@ async function handleFinish(starsRoot) {
     showResultViewLoading();
     try {
         const review = await fetchReview(payload);
+        await clearDraftText();
+        if (textarea)
+            textarea.value = "";
         showResultView(review, false);
     }
     catch (e) {
@@ -226,11 +246,27 @@ document.addEventListener("DOMContentLoaded", () => {
     const starsRoot = document.getElementById("stars-root");
     const cancelBtn = document.getElementById("cancel-btn");
     const finishBtn = document.getElementById("finish-btn");
+    const textarea = document.getElementById("review-text");
     if (!starsRoot) {
         console.error("Missing stars root element");
         return;
     }
     initStars(starsRoot);
-    cancelBtn === null || cancelBtn === void 0 ? void 0 : cancelBtn.addEventListener("click", closePopup);
+    if (textarea) {
+        void loadDraftText().then((draft) => {
+            textarea.value = draft;
+        });
+        textarea.addEventListener("input", () => {
+            saveDraftText(textarea.value);
+        });
+    }
+    cancelBtn === null || cancelBtn === void 0 ? void 0 : cancelBtn.addEventListener("click", () => {
+        void (async () => {
+            await clearDraftText();
+            if (textarea)
+                textarea.value = "";
+            closePopup();
+        })();
+    });
     finishBtn === null || finishBtn === void 0 ? void 0 : finishBtn.addEventListener("click", () => handleFinish(starsRoot));
 });

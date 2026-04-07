@@ -100,6 +100,13 @@
       do not interact with through the Extension.
     </p>
 
+    <h2>Local storage (draft text)</h2>
+    <p>
+      Optional text you type in the Extension popup is saved locally in your browser (<code>chrome.storage.local</code>)
+      so it is still there if you close the popup and open it again. It is removed when you click <strong>Cancel</strong>
+      or after a review is generated successfully. If generation fails, the draft is kept so you can try again.
+    </p>
+
     <h2>Where data is processed</h2>
     <p>
       The payload is sent to our API endpoint:
