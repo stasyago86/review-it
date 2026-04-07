@@ -3,8 +3,28 @@
 const MAX_STARS = 5;
 const RATING_ATTR = "data-selected-rating";
 const SERVER_URL = "https://review-it-backend-587398533610.europe-west4.run.app/api/review";
+const DRAFT_REVIEW_TEXT_KEY = "draftReviewText";
 
 let hoverRating = 0;
+
+function saveDraftText(value: string): void {
+  chrome.storage.local.set({ [DRAFT_REVIEW_TEXT_KEY]: value });
+}
+
+function loadDraftText(): Promise<string> {
+  return new Promise((resolve) => {
+    chrome.storage.local.get([DRAFT_REVIEW_TEXT_KEY], (result) => {
+      const v = result[DRAFT_REVIEW_TEXT_KEY];
+      resolve(typeof v === "string" ? v : "");
+    });
+  });
+}
+
+function clearDraftText(): Promise<void> {
+  return new Promise((resolve) => {
+    chrome.storage.local.remove([DRAFT_REVIEW_TEXT_KEY], () => resolve());
+  });
+}
 
 function getSelectedRating(container: HTMLElement): number {
   const val = container.getAttribute(RATING_ATTR);
@@ -121,7 +141,7 @@ async function getPageInfo(): Promise<{
 }
 
 
-const FETCH_REVIEW_TIMEOUT_MS = 15_000;
+const FETCH_REVIEW_TIMEOUT_MS = 30_000;
 
 async function fetchReview(payload: {
   rating: number;
@@ -153,7 +173,7 @@ async function fetchReview(payload: {
       (e instanceof Error && e.name === "AbortError");
     if (aborted) {
       throw new Error(
-        "Request timed out after 15 seconds. Check your connection and try again."
+        "Request timed out. Check your connection and try again."
       );
     }
     throw e;
@@ -233,6 +253,8 @@ async function handleFinish(starsRoot: HTMLElement) {
 
   try {
     const review = await fetchReview(payload);
+    await clearDraftText();
+    if (textarea) textarea.value = "";
     showResultView(review, false);
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
@@ -256,6 +278,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const starsRoot = document.getElementById("stars-root");
   const cancelBtn = document.getElementById("cancel-btn");
   const finishBtn = document.getElementById("finish-btn");
+  const textarea = document.getElementById("review-text") as HTMLTextAreaElement | null;
 
   if (!starsRoot) {
     console.error("Missing stars root element");
@@ -264,7 +287,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
   initStars(starsRoot);
 
-  cancelBtn?.addEventListener("click", closePopup);
+  if (textarea) {
+    void loadDraftText().then((draft) => {
+      textarea.value = draft;
+    });
+    textarea.addEventListener("input", () => {
+      saveDraftText(textarea.value);
+    });
+  }
+
+  cancelBtn?.addEventListener("click", () => {
+    void (async () => {
+      await clearDraftText();
+      if (textarea) textarea.value = "";
+      closePopup();
+    })();
+  });
+
   finishBtn?.addEventListener("click", () => handleFinish(starsRoot));
 });
 
